@@ -37,10 +37,28 @@ body {
     left: 0;
     width: 100%;
     height: 100%;
+    height: 100dvh;
+    /* Fix for mobile address bars */
     display: none;
     flex-direction: column;
     align-items: center;
-    justify-content: center;
+    overflow-y: auto;
+    /* Allow scrolling if content is tall */
+    -webkit-overflow-scrolling: touch;
+}
+
+.screen.active {
+    display: flex;
+}
+
+/* Ensure content centers nicely but allows scroll */
+.intro-content,
+.cta-content {
+    margin: auto;
+    /* Centers vertically if space permits, pushes out if not */
+    width: 100%;
+    max-width: 400px;
+    padding: 20px;
 }
 
 .screen.active {
@@ -125,11 +143,46 @@ body {
     color: var(--text-light);
 }
 
+.cta-header {
+    margin-bottom: 25px;
+    line-height: 1.2;
+}
+
+.cta-line-1 {
+    font-size: 1.4rem;
+    display: block;
+    color: var(--text-muted);
+    margin-bottom: 5px;
+}
+
+.cta-line-2 {
+    font-size: 2.2rem;
+    font-weight: 900;
+    display: block;
+    text-transform: uppercase;
+    background: linear-gradient(90deg, #fff, var(--primary-color));
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    filter: drop-shadow(0 0 10px rgba(0, 212, 255, 0.4));
+}
+
+.cta-line-3 {
+    font-size: 1.8rem;
+    font-weight: 800;
+    color: var(--success);
+    margin-top: 5px;
+    display: block;
+    text-shadow: 0 0 15px rgba(0, 255, 136, 0.3);
+}
+
 /* Buttons */
 .primary-btn {
     display: flex;
     flex-direction: column;
     align-items: center;
+    justify-content: center;
+    margin: 0 auto;
+    /* CENTER THE BUTTON */
     gap: 4px;
     background: linear-gradient(135deg, var(--primary-color), var(--primary-dark));
     color: var(--bg-dark);
@@ -142,6 +195,7 @@ body {
     transition: all 0.3s ease;
     box-shadow: 0 4px 20px rgba(0, 212, 255, 0.4);
     text-decoration: none;
+    max-width: 300px;
 }
 
 .primary-btn:hover,
@@ -247,7 +301,8 @@ body {
 
 #smile-indicator {
     position: absolute;
-    top: 15px;
+    top: 70px;
+    /* Moved down for Quit button */
     left: 15px;
     background: rgba(0, 0, 0, 0.7);
     padding: 10px 15px;
@@ -503,4 +558,128 @@ body {
     #countdown-number {
         font-size: 5rem;
     }
+}
+
+/* Video Styles */
+.video-container {
+    width: 100%;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: center;
+}
+
+.app-video {
+    width: 100%;
+    max-width: 280px;
+    /* Limit width for aesthetics */
+    border-radius: 15px;
+    border: 2px solid rgba(255, 255, 255, 0.1);
+    box-shadow: 0 4px 15px rgba(0, 0, 0, 0.5);
+    background: #000;
+}
+
+.intro-video-container {
+    margin: 15px 0 25px 0;
+}
+
+
+.cta-video-container {
+    margin-bottom: 20px;
+}
+
+/* Features List */
+.features-list {
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+    margin-bottom: 25px;
+    text-align: left;
+}
+
+.feature-item {
+    display: flex;
+    align-items: center;
+    gap: 15px;
+    background: rgba(255, 255, 255, 0.08);
+    padding: 12px 18px;
+    border-radius: 12px;
+    border: 1px solid rgba(255, 255, 255, 0.05);
+    transition: transform 0.2s ease;
+}
+
+.feature-item:hover {
+    transform: translateX(5px);
+    background: rgba(255, 255, 255, 0.12);
+}
+
+.feature-icon {
+    font-size: 1.5rem;
+}
+
+.feature-text {
+    font-size: 1.1rem;
+    color: var(--text-light);
+}
+
+.highlight-text {
+    color: var(--primary-color);
+    font-weight: 800;
+    text-transform: uppercase;
+    letter-spacing: 0.5px;
+    text-shadow: 0 0 10px rgba(0, 212, 255, 0.3);
+}
+
+/* Quit Button */
+.icon-btn {
+    pointer-events: auto;
+    background: rgba(0, 0, 0, 0.6);
+    color: white;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    width: 40px;
+    height: 40px;
+    border-radius: 50%;
+    font-size: 1.2rem;
+    font-weight: bold;
+    cursor: pointer;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    transition: all 0.2s ease;
+
+    position: absolute;
+    top: 15px;
+    left: 15px;
+    z-index: 20;
+}
+
+.icon-btn:hover {
+    background: rgba(255, 0, 0, 0.8);
+    transform: scale(1.1);
+    border-color: rgba(255, 255, 255, 0.8);
+}
+
+/* Overlay Button Group */
+.button-group {
+    display: flex;
+    gap: 15px;
+    align-items: center;
+    justify-content: center;
+    margin-top: 20px;
+}
+
+.secondary-btn {
+    background: transparent;
+    border: 2px solid white;
+    color: white;
+    padding: 12px 25px;
+    font-size: 1.1rem;
+    font-weight: 700;
+    border-radius: 50px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.secondary-btn:hover {
+    background: rgba(255, 255, 255, 0.1);
+    transform: scale(1.05);
 }
