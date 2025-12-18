@@ -1,0 +1,160 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="theme-color" content="#0a1628">
+
+    <!-- SEO -->
+    <title>Flappy Cheek - Play with Your Smile!</title>
+    <meta name="description" content="Control a fish with your smile! A unique face-controlled game. Try it free now.">
+
+    <!-- Favicon -->
+    <link rel="icon" type="image/png" href="assets/fish_no_BG.png">
+
+    <!-- Styles -->
+    <link rel="stylesheet" href="style.css">
+
+    <!-- MediaPipe (removed old scripts - now using ES modules in face-detection.js) -->
+</head>
+
+<body>
+    <!-- Intro Screen -->
+    <div id="intro-screen" class="screen active">
+        <div class="intro-content">
+            <img src="assets/fish_no_BG.png" alt="Flappy Fish" class="intro-fish">
+            <h1>Flappy Cheek</h1>
+            <p class="tagline">Control the fish with your <span class="highlight">SMILE</span>!</p>
+
+            <div class="instructions">
+                <div class="instruction-item">
+                    <span class="emoji">😊</span>
+                    <span>Smile to flap up</span>
+                </div>
+                <div class="instruction-item">
+                    <span class="emoji">😐</span>
+                    <span>Relax to fall down</span>
+                </div>
+                <div class="instruction-item">
+                    <span class="emoji">🐟</span>
+                    <span>Avoid the pipes!</span>
+                </div>
+            </div>
+
+            <button id="start-btn" class="primary-btn">
+                <span>Start Game</span>
+                <span class="btn-subtitle">3 free rounds</span>
+            </button>
+
+            <p class="permission-note">📷 Camera access required for face detection</p>
+        </div>
+    </div>
+
+    <!-- Game Screen -->
+    <div id="game-screen" class="screen">
+        <!-- Camera preview (hidden, used for face detection) -->
+        <video id="camera-feed" autoplay playsinline></video>
+
+        <!-- Game canvas -->
+        <canvas id="game-canvas"></canvas>
+
+        <!-- UI Overlay -->
+        <div id="game-ui">
+            <div id="score-display">
+                <span id="score">0</span>
+                <span class="score-label">SCORE</span>
+            </div>
+
+            <div id="smile-indicator">
+                <span id="smile-emoji">😐</span>
+                <div class="smile-bar">
+                    <div id="smile-fill"></div>
+                    <div id="smile-threshold"></div>
+                </div>
+            </div>
+
+            <div id="round-display">
+                Round <span id="current-round">1</span>/3
+            </div>
+        </div>
+
+        <!-- Countdown overlay -->
+        <div id="countdown-overlay" class="overlay hidden">
+            <div class="countdown-text">GET READY!</div>
+            <div id="countdown-number">3</div>
+            <div class="countdown-hint">SMILE to make the fish jump!</div>
+        </div>
+
+        <!-- Round over overlay -->
+        <div id="round-over-overlay" class="overlay hidden">
+            <div class="round-over-title">🐟 CRASHED! 🐟</div>
+            <div class="round-score">Score: <span id="round-score">0</span></div>
+            <div class="rounds-left">Rounds left: <span id="rounds-left">2</span></div>
+            <button id="next-round-btn" class="primary-btn">Play Again</button>
+        </div>
+    </div>
+
+    <!-- CTA Screen -->
+    <div id="cta-screen" class="screen">
+        <div class="cta-content">
+            <img src="assets/fish_no_BG.png" alt="Flappy Fish" class="cta-fish">
+            <h2>Great Game!</h2>
+            <div class="final-score">
+                Your Best Score: <span id="best-score">0</span>
+            </div>
+
+            <div class="cta-message">
+                <p>Want more games like this?</p>
+                <p class="cta-highlight">CheekApp has 5+ face-controlled games!</p>
+            </div>
+
+            <!-- Android CTA -->
+            <div id="android-cta" class="cta-buttons hidden">
+                <a href="https://play.google.com/store/apps/details?id=com.cheekapp.app&hl" target="_blank"
+                    class="primary-btn download-btn" id="play-store-btn">
+                    <span class="btn-icon">▶</span>
+                    <span>Download on Google Play</span>
+                </a>
+            </div>
+
+            <!-- iOS CTA -->
+            <div id="ios-cta" class="cta-buttons hidden">
+                <p class="ios-message">iOS version coming soon!</p>
+                <a href="https://forms.gle/JLFmwVcXZRJ9vwtw6" target="_blank" class="secondary-btn" id="notify-btn">
+                    <span>🔔 Notify Me When Available</span>
+                </a>
+            </div>
+
+            <!-- Other/Unknown CTA -->
+            <div id="other-cta" class="cta-buttons hidden">
+                <a href="https://play.google.com/store/apps/details?id=com.cheekapp.app&hl" target="_blank"
+                    class="primary-btn download-btn">
+                    <span class="btn-icon">▶</span>
+                    <span>Download on Android</span>
+                </a>
+                <a href="https://forms.gle/JLFmwVcXZRJ9vwtw6" target="_blank" class="secondary-btn">
+                    <span>🔔 Notify Me for iOS</span>
+                </a>
+            </div>
+
+            <button id="replay-info" class="text-btn">
+                Refresh page to play again
+            </button>
+        </div>
+    </div>
+
+    <!-- Loading overlay -->
+    <div id="loading-overlay" class="overlay hidden">
+        <div class="loader"></div>
+        <div id="loading-text">Loading face detection...</div>
+    </div>
+
+    <!-- Scripts (using type=module for ES module imports) -->
+    <script src="face-detection.js"></script>
+    <script src="game.js"></script>
+</body>
+
+</html>
