@@ -185,6 +185,19 @@ class FlappyGame {
             this.startNextRound();
         });
 
+        // CTA Replay button
+        const ctaReplay = document.getElementById('cta-replay-btn');
+        if (ctaReplay) {
+            console.log('✅ CTA Replay button found, adding listener');
+            ctaReplay.addEventListener('click', () => {
+                console.log('🔄 Play Again clicked! Restarting game...');
+                this.currentRound = 1;
+                this.startGame();
+            });
+        } else {
+            console.warn('⚠️ CTA Replay button NOT found!');
+        }
+
         // Fullscreen on tap (for mobile)
         this.gameScreen.addEventListener('click', () => {
             if (document.fullscreenElement === null) {
@@ -206,18 +219,30 @@ class FlappyGame {
         // CTA Buttons tracking
         const trackDownload = (platform) => this.logEvent('download_click', { platform });
 
-        document.getElementById('android-cta').addEventListener('click', () => trackDownload('android'));
-        const iosForm = document.getElementById('ios-cta-form');
-        if (iosForm) iosForm.addEventListener('click', () => trackDownload('ios_notify'));
+        const setupTracking = (id, platform) => {
+            const el = document.getElementById(id);
+            if (el) el.addEventListener('click', () => trackDownload(platform));
+        };
 
-        const otherCta = document.getElementById('other-cta');
-        if (otherCta) {
-            otherCta.addEventListener('click', (e) => {
-                if (e.target.tagName === 'A') {
-                    this.logEvent('download_click', { platform: 'other', link: e.target.href });
-                }
-            });
-        }
+        const setupOtherTracking = (id) => {
+            const el = document.getElementById(id);
+            if (el) {
+                el.addEventListener('click', (e) => {
+                    if (e.target.tagName === 'A') {
+                        this.logEvent('download_click', { platform: 'other', link: e.target.href });
+                    }
+                });
+            }
+        };
+
+        setupTracking('android-cta', 'android');
+        setupTracking('android-cta-top', 'android');
+
+        setupTracking('ios-cta', 'ios_notify');
+        setupTracking('ios-cta-top', 'ios_notify');
+
+        setupOtherTracking('other-cta');
+        setupOtherTracking('other-cta-top');
     }
 
     setupCTA() {
@@ -229,19 +254,27 @@ class FlappyGame {
         const iosCta = document.getElementById('ios-cta');
         const otherCta = document.getElementById('other-cta');
 
+        const androidCtaTop = document.getElementById('android-cta-top');
+        const iosCtaTop = document.getElementById('ios-cta-top');
+        const otherCtaTop = document.getElementById('other-cta-top');
+
         // Hide all first
-        androidCta.classList.add('hidden');
-        iosCta.classList.add('hidden');
-        otherCta.classList.add('hidden');
+        const allCta = [androidCta, iosCta, otherCta, androidCtaTop, iosCtaTop, otherCtaTop];
+        allCta.forEach(el => {
+            if (el) el.classList.add('hidden');
+        });
 
         // Show appropriate CTA
         if (isAndroid) {
-            androidCta.classList.remove('hidden');
+            if (androidCta) androidCta.classList.remove('hidden');
+            if (androidCtaTop) androidCtaTop.classList.remove('hidden');
         } else if (isIOS) {
-            iosCta.classList.remove('hidden');
+            if (iosCta) iosCta.classList.remove('hidden');
+            if (iosCtaTop) iosCtaTop.classList.remove('hidden');
         } else {
             // Desktop or other - show both options
-            otherCta.classList.remove('hidden');
+            if (otherCta) otherCta.classList.remove('hidden');
+            if (otherCtaTop) otherCtaTop.classList.remove('hidden');
         }
     }
 
@@ -270,8 +303,49 @@ class FlappyGame {
     }
 
     async startGame() {
+        console.log('🎮 startGame() called');
+
+        // Reset flags & State immediately
+        this.gameOver = false;
+        this.gameStarted = false;
+        this.score = 0;
+        this.obstacles = [];
+        this.birdY = this.SCREEN_HEIGHT / 2;
+        this.birdVelocity = 0;
+
+        // Stop any existing face detector
+        if (this.faceDetector) {
+            console.log('🛑 Stopping existing face detector');
+            this.faceDetector.stop();
+            this.faceDetector = null;
+        }
+
+        // Cancel any existing animation frame
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+            this.animationId = null;
+        }
+
+        // Clear any existing countdown
+        if (this.countdownInterval) {
+            clearInterval(this.countdownInterval);
+            this.countdownInterval = null;
+        }
+
+        // Clear canvas
+        if (this.ctx && this.canvas) {
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            this.drawFish(); // Draw fish at start position
+        }
+
+        // Update UI
+        document.getElementById('score').textContent = '0';
+        document.getElementById('current-round').textContent = this.currentRound;
+
         // Show game screen
         this.introScreen.classList.remove('active');
+        this.ctaScreen.classList.remove('active'); // Ensure CTA is hidden
+        this.roundOverOverlay.classList.add('hidden'); // Hide round over
         this.gameScreen.classList.add('active');
 
         // Show loading
@@ -280,10 +354,12 @@ class FlappyGame {
 
         try {
             // Initialize face detection
+            console.log('🔍 Creating new FaceDetector');
             this.faceDetector = new FaceDetector();
 
             document.getElementById('loading-text').textContent = 'Loading face detection...';
             await this.faceDetector.initialize(this.videoElement);
+            console.log('✅ FaceDetector initialized');
 
             // Set up smile callback
             this.faceDetector.onSmileChange = (isSmiling) => {
@@ -296,6 +372,7 @@ class FlappyGame {
             this.loadingOverlay.classList.add('hidden');
 
             // Start countdown
+            console.log('⏱️ Starting countdown');
             this.startCountdown();
 
         } catch (error) {
@@ -631,8 +708,37 @@ class FlappyGame {
     }
 
     startNextRound() {
+        console.log('🔄 startNextRound() called');
+
+        // Hide the overlay
         this.roundOverOverlay.classList.add('hidden');
+
+        // Reset game state for new round
+        this.gameOver = false;
+        this.gameStarted = false;
+        this.score = 0;
+        this.obstacles = [];
+        this.birdY = this.SCREEN_HEIGHT / 2;
+        this.birdVelocity = 0;
+
+        // Cancel any existing animation frame
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+            this.animationId = null;
+        }
+
+        // Clear canvas and draw fresh fish
+        if (this.ctx && this.canvas) {
+            this.ctx.clearRect(0, 0, this.canvas.width, this.canvas.height);
+            this.drawFish();
+        }
+
+        // Update UI
+        document.getElementById('score').textContent = '0';
         this.currentRound++;
+        document.getElementById('current-round').textContent = this.currentRound;
+
+        // Start countdown for new round
         this.startCountdown();
     }
 
