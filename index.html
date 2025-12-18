@@ -8,6 +8,16 @@
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="theme-color" content="#0a1628">
 
+    <!-- Google tag (gtag.js) -->
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-ZLPN9THPCN"></script>
+    <script>
+        window.dataLayer = window.dataLayer || [];
+        function gtag() { dataLayer.push(arguments); }
+        gtag('js', new Date());
+
+        gtag('config', 'G-ZLPN9THPCN');
+    </script>
+
     <!-- SEO -->
     <title>Flappy Cheek - Play with Your Smile!</title>
     <meta name="description" content="Control a fish with your smile! A unique face-controlled game. Try it free now.">
@@ -28,6 +38,10 @@
             <img src="assets/fish_no_BG.png" alt="Flappy Fish" class="intro-fish">
             <h1>Flappy Cheek</h1>
             <p class="tagline">Control the fish with your <span class="highlight">SMILE</span>!</p>
+
+            <div class="video-container intro-video-container">
+                <video src="assets/tutorial.mp4" autoplay loop muted playsinline class="app-video"></video>
+            </div>
 
             <div class="instructions">
                 <div class="instruction-item">
@@ -63,6 +77,7 @@
 
         <!-- UI Overlay -->
         <div id="game-ui">
+            <button id="quit-btn" class="icon-btn">✕</button>
             <div id="score-display">
                 <span id="score">0</span>
                 <span class="score-label">SCORE</span>
@@ -93,7 +108,10 @@
             <div class="round-over-title">🐟 CRASHED! 🐟</div>
             <div class="round-score">Score: <span id="round-score">0</span></div>
             <div class="rounds-left">Rounds left: <span id="rounds-left">2</span></div>
-            <button id="next-round-btn" class="primary-btn">Play Again</button>
+            <div class="button-group">
+                <button id="quit-overlay-btn" class="secondary-btn">Quit</button>
+                <button id="next-round-btn" class="primary-btn">Play Again</button>
+            </div>
         </div>
     </div>
 
@@ -107,8 +125,34 @@
             </div>
 
             <div class="cta-message">
-                <p>Want more games like this?</p>
-                <p class="cta-highlight">CheekApp has 5+ face-controlled games!</p>
+                <div class="video-container cta-video-container">
+                    <video src="assets/features.mp4" autoplay loop muted playsinline class="app-video"></video>
+                </div>
+
+                <div class="cta-header">
+                    <span class="cta-line-1">Ready to</span>
+                    <span class="cta-line-2">Transform?</span>
+                    <span class="cta-line-3">Get the COMPLETE Face Workout</span>
+                </div>
+
+                <div class="features-list">
+                    <div class="feature-item">
+                        <span class="feature-icon">🤖</span>
+                        <span class="feature-text"><span class="highlight-text">AI</span> Face Analysis</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">🎮</span>
+                        <span class="feature-text"><span class="highlight-text">AR Games</span> & Massages</span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">📋</span>
+                        <span class="feature-text">Custom <span class="highlight-text">Daily Routines</span></span>
+                    </div>
+                    <div class="feature-item">
+                        <span class="feature-icon">📅</span>
+                        <span class="feature-text"><span class="highlight-text">Habit</span> Tracker</span>
+                    </div>
+                </div>
             </div>
 
             <!-- Android CTA -->
