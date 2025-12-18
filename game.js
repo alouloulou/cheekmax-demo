@@ -53,6 +53,7 @@ class FlappyGame {
         // Assets
         this.fishImage = null;
         this.oceanImage = null;
+        this.sounds = {};
         this.assetsLoaded = false;
 
         // Animation
@@ -84,27 +85,34 @@ class FlappyGame {
         this.canvas.width = window.innerWidth;
         this.canvas.height = window.innerHeight;
 
-        // Use UNIFORM scaling to preserve aspect ratio (like Flutter app)
-        // This ensures the gap size remains proportional to the fish
-        const rawScaleX = this.canvas.width / this.SCREEN_WIDTH;
-        const rawScaleY = this.canvas.height / this.SCREEN_HEIGHT;
+        // Use INDEPENDENT scaling to fill the screen (Fill/Stretch) across logic (640x480)
+        // This stops "cropping" and ensures full screen play
+        this.scaleX = this.canvas.width / this.SCREEN_WIDTH;
+        this.scaleY = this.canvas.height / this.SCREEN_HEIGHT;
 
-        // Use the minimum scale to fit the game area, maintaining proportions
-        this.uniformScale = Math.min(rawScaleX, rawScaleY);
-
-        // Calculate offset to center the game area
-        this.offsetX = (this.canvas.width - this.SCREEN_WIDTH * this.uniformScale) / 2;
-        this.offsetY = (this.canvas.height - this.SCREEN_HEIGHT * this.uniformScale) / 2;
-
-        // For backwards compatibility, set scaleX/Y to uniform scale
-        this.scaleX = this.uniformScale;
-        this.scaleY = this.uniformScale;
+        // Remove uniform offsets
+        this.uniformScale = null;
+        this.offsetX = 0;
+        this.offsetY = 0;
     }
 
     async loadAssets() {
         return new Promise((resolve) => {
             let loaded = 0;
-            const total = 2;
+            const soundFiles = {
+                'jump': 'assets/jump.mp3',
+                'bgm': 'assets/bgm.mp3'
+            };
+            const imageTotal = 2;
+            const soundTotal = Object.keys(soundFiles).length;
+            // Only require images to resolve initial load, sounds can be async/non-blocking or included.
+            // Let's require all for simplicity.
+            // Actually, waiting for sounds might delay startup. 
+            // Better to load images and resolve, while sounds load in background?
+            // Or just check images. User wants sounds. Let's wait for images only to resolve 'assetsLoaded', 
+            // but initiate sound loading.
+
+            const total = 2; // Verify images only for game start readiness
 
             const checkComplete = () => {
                 loaded++;
@@ -125,7 +133,45 @@ class FlappyGame {
             this.oceanImage.onload = checkComplete;
             this.oceanImage.onerror = checkComplete;
             this.oceanImage.src = 'assets/ocean_image_with_alpha.png';
+
+            // Load sounds (fire and forget for promise, or store them)
+            for (const [key, src] of Object.entries(soundFiles)) {
+                const audio = new Audio();
+                audio.src = src;
+                if (key === 'bgm') {
+                    audio.loop = true;
+                    audio.volume = 0.5;
+                }
+                this.sounds[key] = audio;
+            }
         });
+    }
+
+    playSound(name) {
+        if (this.sounds[name]) {
+            if (name === 'bgm') {
+                this.sounds[name].play().catch(() => { });
+                return;
+            }
+            // Clone for overlapping SFX
+            const clone = this.sounds[name].cloneNode();
+            clone.volume = 1.0;
+            clone.play().catch(() => { });
+        }
+    }
+
+    stopBGM() {
+        if (this.sounds['bgm']) {
+            this.sounds['bgm'].pause();
+            this.sounds['bgm'].currentTime = 0;
+        }
+    }
+
+    logEvent(name, params = {}) {
+        if (typeof gtag === 'function') {
+            gtag('event', name, params);
+            console.log(`📊 Event: ${name}`, params);
+        }
     }
 
     setupEventListeners() {
@@ -146,6 +192,32 @@ class FlappyGame {
                     document.body.webkitRequestFullscreen?.();
             }
         });
+
+        document.getElementById('quit-btn').addEventListener('click', (e) => {
+            e.stopPropagation();
+            this.quitGame();
+        });
+
+        // Quit overlay button
+        document.getElementById('quit-overlay-btn').addEventListener('click', () => {
+            this.quitGame();
+        });
+
+        // CTA Buttons tracking
+        const trackDownload = (platform) => this.logEvent('download_click', { platform });
+
+        document.getElementById('android-cta').addEventListener('click', () => trackDownload('android'));
+        const iosForm = document.getElementById('ios-cta-form');
+        if (iosForm) iosForm.addEventListener('click', () => trackDownload('ios_notify'));
+
+        const otherCta = document.getElementById('other-cta');
+        if (otherCta) {
+            otherCta.addEventListener('click', (e) => {
+                if (e.target.tagName === 'A') {
+                    this.logEvent('download_click', { platform: 'other', link: e.target.href });
+                }
+            });
+        }
     }
 
     setupCTA() {
@@ -171,6 +243,30 @@ class FlappyGame {
             // Desktop or other - show both options
             otherCta.classList.remove('hidden');
         }
+    }
+
+    quitGame() {
+        console.log('🛑 User quit game');
+        this.gameStarted = false;
+        this.gameOver = true;
+
+        if (this.animationId) {
+            cancelAnimationFrame(this.animationId);
+            this.animationId = null;
+        }
+
+        if (this.countdownInterval) {
+            clearInterval(this.countdownInterval);
+        }
+
+        // Hide game, show CTA
+        this.gameScreen.classList.remove('active');
+        this.roundOverOverlay.classList.remove('active'); // In case it was open
+        this.introScreen.classList.remove('active'); // Just in case
+
+        this.showCTAScreen();
+        this.stopBGM();
+        this.logEvent('game_quit', { score: this.score, round: this.currentRound });
     }
 
     async startGame() {
@@ -216,14 +312,17 @@ class FlappyGame {
 
         countdownNumber.textContent = count;
 
-        const countdownInterval = setInterval(() => {
+        this.countdownInterval = setInterval(() => {
             count--;
             if (count > 0) {
                 countdownNumber.textContent = count;
             } else {
-                clearInterval(countdownInterval);
+                clearInterval(this.countdownInterval);
                 this.countdownOverlay.classList.add('hidden');
-                this.beginGameplay();
+                // Only start if not quit
+                if (!this.gameOver) {
+                    this.beginGameplay();
+                }
             }
         }, 1000);
     }
@@ -243,6 +342,8 @@ class FlappyGame {
 
         // Start game loop
         this.gameLoop();
+        this.playSound('bgm');
+        this.logEvent('game_start', { round: this.currentRound });
     }
 
     flap() {
@@ -252,6 +353,7 @@ class FlappyGame {
 
         this.birdVelocity = this.FLAP_STRENGTH;
         this.lastFlapTime = now;
+        this.playSound('jump');
         console.log('🐟 Flap!');
     }
 
@@ -327,6 +429,8 @@ class FlappyGame {
         const gapTop = minGapTop + Math.random() * (maxGapTop - minGapTop);
         const gapBottom = gapTop + this.GAP_SIZE;
 
+        console.log(`Spawned Pipe: GapTop=${gapTop.toFixed(1)}, GapHeight=${this.GAP_SIZE}`);
+
         this.obstacles.push({
             x: this.SCREEN_WIDTH,
             gapTop: gapTop,
@@ -393,69 +497,93 @@ class FlappyGame {
 
     drawPipe(obs) {
         const ctx = this.ctx;
-        const scale = this.uniformScale;
-        const offsetX = this.offsetX || 0;
-        const offsetY = this.offsetY || 0;
 
-        const x = offsetX + obs.x * scale;
-        const width = this.OBSTACLE_WIDTH * scale;
-        const gapTop = offsetY + obs.gapTop * scale;
-        const gapBottom = offsetY + obs.gapBottom * scale;
-        const screenTop = offsetY;
-        const screenBottom = offsetY + this.SCREEN_HEIGHT * scale;
+        // Use Independent Scales (Fill Screen)
+        const x = obs.x * this.scaleX;
+        const width = this.OBSTACLE_WIDTH * this.scaleX;
+        const gapTop = obs.gapTop * this.scaleY;
+        const gapBottom = obs.gapBottom * this.scaleY;
 
-        // Pipe colors
-        const pipeColor = '#228B22';
-        const capColor = '#196E19';
-        const highlightColor = 'rgba(255,255,255,0.2)';
-        const shadowColor = 'rgba(0,0,0,0.2)';
+        // Full screen limits
+        const screenTop = 0;
+        const screenBottom = this.canvas.height;
 
-        // Top pipe (from screen top to gap top)
-        ctx.fillStyle = pipeColor;
-        ctx.fillRect(x, screenTop, width, gapTop - screenTop);
+        // Colors from Flutter FlappyCheekPainter
+        const tubeColor = '#228B22';      // _tubePaint
+        const capColor = '#196E19';       // _capPaint
+        const borderColor = 'rgba(0, 255, 0, 0.6)'; // _borderPaint
+        const edgeHighlight = 'rgba(255, 255, 255, 0.2)'; // _edgePaint
+        const edgeShadow = 'rgba(0, 0, 0, 0.2)'; // _shadowPaint
 
-        // Top pipe cap
-        const capHeight = 20 * scale;
-        const capExtension = 4 * scale;
+        const capHeight = 20 * this.scaleX; // Scale with WIDTH (X) to maintain proportion, don't stretch with Y
+        const capExtension = 4 * this.scaleX; // Scale horizontal features with X
+        const edgeWidth = width * 0.1;
+
+        // --- TOP PIPE ---
+        const topPipeHeight = gapTop - screenTop;
+
+        // 1. Main body
+        ctx.fillStyle = tubeColor;
+        ctx.fillRect(x, screenTop, width, topPipeHeight);
+
+        // 2. 3D effects (Highlight & Shadow)
+        ctx.fillStyle = edgeHighlight;
+        ctx.fillRect(x, screenTop, edgeWidth, topPipeHeight);
+
+        ctx.fillStyle = edgeShadow;
+        ctx.fillRect(x + width - edgeWidth, screenTop, edgeWidth, topPipeHeight);
+
+        // 3. Cap
+        const topCapY = gapTop - capHeight;
         ctx.fillStyle = capColor;
-        ctx.fillRect(x - capExtension, gapTop - capHeight, width + capExtension * 2, capHeight);
+        ctx.fillRect(x - capExtension, topCapY, width + capExtension * 2, capHeight);
 
-        // Top pipe 3D effect
-        ctx.fillStyle = highlightColor;
-        ctx.fillRect(x, screenTop, width * 0.1, gapTop - screenTop);
-        ctx.fillStyle = shadowColor;
-        ctx.fillRect(x + width * 0.9, screenTop, width * 0.1, gapTop - screenTop);
+        // 4. Borders
+        ctx.strokeStyle = borderColor;
+        ctx.lineWidth = 2;
 
-        // Bottom pipe (from gap bottom to screen bottom)
-        ctx.fillStyle = pipeColor;
-        ctx.fillRect(x, gapBottom, width, screenBottom - gapBottom);
+        // Border for main body
+        ctx.strokeRect(x, screenTop, width, topPipeHeight);
 
-        // Bottom pipe cap
+        // Border for cap
+        ctx.strokeRect(x - capExtension, topCapY, width + capExtension * 2, capHeight);
+
+
+        // --- BOTTOM PIPE ---
+        const bottomPipeHeight = screenBottom - gapBottom;
+
+        // 1. Main body
+        ctx.fillStyle = tubeColor;
+        ctx.fillRect(x, gapBottom, width, bottomPipeHeight);
+
+        // 2. 3D effects
+        ctx.fillStyle = edgeHighlight;
+        ctx.fillRect(x, gapBottom, edgeWidth, bottomPipeHeight);
+
+        ctx.fillStyle = edgeShadow;
+        ctx.fillRect(x + width - edgeWidth, gapBottom, edgeWidth, bottomPipeHeight);
+
+        // 3. Cap
         ctx.fillStyle = capColor;
         ctx.fillRect(x - capExtension, gapBottom, width + capExtension * 2, capHeight);
 
-        // Bottom pipe 3D effect
-        ctx.fillStyle = highlightColor;
-        ctx.fillRect(x, gapBottom, width * 0.1, screenBottom - gapBottom);
-        ctx.fillStyle = shadowColor;
-        ctx.fillRect(x + width * 0.9, gapBottom, width * 0.1, screenBottom - gapBottom);
-
-        // Pipe borders
-        ctx.strokeStyle = 'rgba(0,255,0,0.6)';
+        // 4. Borders
+        ctx.strokeStyle = borderColor;
         ctx.lineWidth = 2;
-        ctx.strokeRect(x, screenTop, width, gapTop - screenTop);
-        ctx.strokeRect(x, gapBottom, width, screenBottom - gapBottom);
+
+        // Border for main body
+        ctx.strokeRect(x, gapBottom, width, bottomPipeHeight);
+
+        // Border for cap
+        ctx.strokeRect(x - capExtension, gapBottom, width + capExtension * 2, capHeight);
     }
 
     drawFish() {
         const ctx = this.ctx;
-        const scale = this.uniformScale;
-        const offsetX = this.offsetX || 0;
-        const offsetY = this.offsetY || 0;
 
-        const x = offsetX + this.BIRD_X * scale;
-        const y = offsetY + this.birdY * scale;
-        const size = this.BIRD_SIZE * scale;
+        const x = this.BIRD_X * this.scaleX;
+        const y = this.birdY * this.scaleY; // Y position scales with Height
+        const size = this.BIRD_SIZE * this.scaleX; // Size scales with Width (Maintain Aspect Ratio)
 
         if (this.fishImage && this.fishImage.complete) {
             ctx.globalAlpha = 0.85;
@@ -478,6 +606,12 @@ class FlappyGame {
 
     handleGameOver() {
         this.gameStarted = false;
+        this.stopBGM();
+
+        this.logEvent('round_complete', {
+            score: this.score,
+            round: this.currentRound
+        });
 
         // Update best score
         if (this.score > this.bestScore) {
@@ -519,6 +653,7 @@ class FlappyGame {
         // Switch screens
         this.gameScreen.classList.remove('active');
         this.ctaScreen.classList.add('active');
+        this.logEvent('cta_view');
     }
 }
 
