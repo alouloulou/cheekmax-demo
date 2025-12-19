@@ -33,12 +33,12 @@ class FaceDetector {
         console.log('🔄 Initializing MediaPipe Face Landmarker...');
 
         try {
-            // Request camera access
+            // Request camera access - OPTIMIZED for low-end devices
             const stream = await navigator.mediaDevices.getUserMedia({
                 video: {
                     facingMode: 'user',
-                    width: { ideal: 640 },
-                    height: { ideal: 480 }
+                    width: { ideal: 480 },  // Reduced from 640 for performance
+                    height: { ideal: 360 }  // Reduced from 480 for performance
                 }
             });
 
@@ -78,18 +78,30 @@ class FaceDetector {
     }
 
     startDetectionLoop() {
-        const detectFrame = () => {
+        // OPTIMIZATION: Limit face detection to ~15fps (every 66ms) instead of 60fps
+        // This dramatically reduces CPU usage on low-end devices like Samsung A04
+        const TARGET_FPS = 15;
+        const FRAME_INTERVAL = 1000 / TARGET_FPS;
+        let lastFrameTime = 0;
+
+        const detectFrame = (currentTime) => {
             if (!this.isInitialized || !this.faceLandmarker) return;
 
-            const startTimeMs = performance.now();
-            const results = this.faceLandmarker.detectForVideo(this.videoElement, startTimeMs);
+            // Throttle: Only process if enough time has passed
+            const elapsed = currentTime - lastFrameTime;
+            if (elapsed < FRAME_INTERVAL) {
+                this.animationId = requestAnimationFrame(detectFrame);
+                return;
+            }
+            lastFrameTime = currentTime;
 
+            const results = this.faceLandmarker.detectForVideo(this.videoElement, currentTime);
             this.processResults(results);
 
             this.animationId = requestAnimationFrame(detectFrame);
         };
 
-        detectFrame();
+        requestAnimationFrame(detectFrame);
     }
 
     processResults(results) {
