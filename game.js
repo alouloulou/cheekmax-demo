@@ -418,7 +418,7 @@ class FlappyGame {
         document.getElementById('current-round').textContent = this.currentRound;
 
         // Start game loop
-        this.gameLoop();
+        requestAnimationFrame((t) => this.gameLoop(t));
         this.playSound('bgm');
         this.logEvent('game_start', { round: this.currentRound });
     }
@@ -434,8 +434,19 @@ class FlappyGame {
         console.log('🐟 Flap!');
     }
 
-    gameLoop() {
+    gameLoop(currentTime) {
         if (!this.gameStarted) return;
+
+        // OPTIMIZATION: Cap game loop at 30fps for low-end devices
+        if (!this.lastGameLoopTime) this.lastGameLoopTime = 0;
+        const elapsed = currentTime - this.lastGameLoopTime;
+        const GAME_FRAME_INTERVAL = 1000 / 30; // 30fps cap
+
+        if (elapsed < GAME_FRAME_INTERVAL) {
+            this.animationId = requestAnimationFrame((t) => this.gameLoop(t));
+            return;
+        }
+        this.lastGameLoopTime = currentTime;
 
         this.update();
         this.render();
@@ -443,7 +454,7 @@ class FlappyGame {
         if (this.gameOver) {
             this.handleGameOver();
         } else {
-            this.animationId = requestAnimationFrame(() => this.gameLoop());
+            this.animationId = requestAnimationFrame((t) => this.gameLoop(t));
         }
     }
 
